@@ -14,17 +14,19 @@ void button_init(void);
  */
 void led_init(void);
 
-#define DLY_TIME 0x3FFFFF
+int EXTI0_1_counter=0;
 
 int main(void){
-    setToMaxSpeed();
-	button_init();
+	setToMaxSpeed();
 	led_init();
-    while(1){
-    }
+	button_init();
+	while(1){
+		
+	}
 }
 
 void button_init(void){
+	//Configure PB0 as input with pull-ups
 	RCC_AHBPeriphClockCmd(RCC_AHBPeriph_GPIOB,ENABLE);
 	GPIO_InitTypeDef myGPIO;
 	GPIO_StructInit(&myGPIO);
@@ -33,6 +35,8 @@ void button_init(void){
 	myGPIO.GPIO_PuPd=GPIO_PuPd_UP;
 	GPIO_Init(GPIOB,&myGPIO);
 	
+	//Configure PB0 both edges interrupt
+	RCC_APB2PeriphClockCmd(RCC_APB2ENR_SYSCFGEN,ENABLE);//Turn on SYSCFG since it's disabled by default
 	EXTI_InitTypeDef myEXTI;
 	EXTI_StructInit(&myEXTI);
 	myEXTI.EXTI_Line=EXTI_Line0;
@@ -41,10 +45,11 @@ void button_init(void){
 	myEXTI.EXTI_Trigger=EXTI_Trigger_Rising_Falling;
 	EXTI_Init(&myEXTI);
 	
-	SYSCFG_EXTILineConfig(EXTI_PortSourceGPIOB,EXTI_PinSource0);
+	SYSCFG_EXTILineConfig(EXTI_PortSourceGPIOB,EXTI_PinSource0);//Reamp Line 0 to Port B
 	
-	EXTI_ClearITPendingBit(EXTI_Line0);
-	NVIC_EnableIRQ(EXTI0_1_IRQn);
+	EXTI_ClearITPendingBit(EXTI_Line0);//Clear pening interrupts
+	NVIC_EnableIRQ(EXTI0_1_IRQn);//Enable EXTI0  interrupts
+	EXTI_GenerateSWInterrupt(EXTI_Line0);//Genrate SW interrupt to update initial led state
 }
 
 void led_init(void){
@@ -54,7 +59,6 @@ void led_init(void){
 	myGPIO.GPIO_Pin=GPIO_Pin_1;
 	myGPIO.GPIO_Mode=GPIO_Mode_OUT;
 	GPIO_Init(GPIOB,&myGPIO);
-	
 	GPIO_ResetBits(GPIOB,GPIO_Pin_1);
 }
 
@@ -82,4 +86,5 @@ void EXTI0_1_IRQHandler(void){
 		//TODO
 		GPIO_WriteBit(GPIOB,GPIO_Pin_1,!GPIO_ReadInputDataBit(GPIOB,GPIO_Pin_0));
 	}
+	EXTI0_1_counter++;
 }
